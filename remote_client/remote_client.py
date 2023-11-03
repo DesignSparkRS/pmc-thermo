@@ -53,18 +53,20 @@ class ActionHandler(Thread):
     """Generates outbound MQTT messages according to rule"""
     previous_event = False
 
+    def send_command(command: str):
+        mqttc.publish("test/activate", command, qos=0)
+        LoggingHandler.log_to_console(command)
+
     def test_rule(t1, t2, t3):
         is_tripped = False
         if Rule.rule(t1, t2, t3):
             is_tripped = True
             if ActionHandler.previous_event != is_tripped:
-                mqttc.publish("test/activate", "ON", qos=0)
-                LoggingHandler.log_to_console("ON")
+                ActionHandler.send_command("ON")
         else:
             is_tripped = False
             if ActionHandler.previous_event != is_tripped:
-                mqttc.publish("test/activate", "OFF", qos=0)
-                LoggingHandler.log_to_console("OFF")
+                ActionHandler.send_command("OFF")
         ActionHandler.previous_event = is_tripped
 
     def run(self):
