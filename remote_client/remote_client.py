@@ -14,14 +14,13 @@ port = 1883
 
 class Listener():
     """Listens for inbound MQTT messages"""
-    def __init__(self, mqttc: mqtt.Client, topic: str):
-        self.mqttc = mqttc
+    def __init__(self, topic: str):
         self.topic = topic
 
-    def on_connect(self, mqttc, obj, flags, rc):
+    def on_connect(mqttc, obj, flags, rc):
         LoggingHandler.log_to_console("Connected")
 
-    def on_message(self, mqttc, obj, msg):
+    def on_message(mqttc, obj, msg):
         msg_handler_queue.put(msg)
         LoggingHandler.log_to_console(CsvDecoder.decode(msg))
 
@@ -29,12 +28,12 @@ class Listener():
         LoggingHandler.log_to_console(f'Subscribed: {self.topic} {mid} {granted_qos}')
 
     def run(self):
-        self.mqttc.on_connect = self.on_connect
-        self.mqttc.on_subscribe = self.on_subscribe
-        self.mqttc.on_message = self.on_message
-        self.mqttc.connect(broker, port)
-        self.mqttc.subscribe(self.topic, 0)
-        self.mqttc.loop_forever()
+        mqttc.on_connect = Listener.on_connect
+        mqttc.on_subscribe = self.on_subscribe
+        mqttc.on_message = Listener.on_message
+        mqttc.connect(broker, port)
+        mqttc.subscribe(self.topic, 0)
+        mqttc.loop_forever()
 
 
 class MessageHandler(Thread):
@@ -59,12 +58,12 @@ class ActionHandler(Thread):
         if Rule.rule(t1, t2, t3):
             is_tripped = True
             if ActionHandler.previous_event != is_tripped:
-                publish.single("test/activate", "ON", hostname=broker)
+                mqttc.publish("test/activate", "ON", qos=0)
                 LoggingHandler.log_to_console("ON")
         else:
             is_tripped = False
             if ActionHandler.previous_event != is_tripped:
-                publish.single("test/activate", "OFF", hostname=broker)
+                mqttc.publish("test/activate", "OFF", qos=0)
                 LoggingHandler.log_to_console("OFF")
         ActionHandler.previous_event = is_tripped
 
@@ -117,5 +116,5 @@ if __name__ == '__main__':
     action_handler.start()
     message_handler.start()
 
-    listener = Listener(mqttc, "test/thermos")
+    listener = Listener("test/thermos")
     listener.run()
