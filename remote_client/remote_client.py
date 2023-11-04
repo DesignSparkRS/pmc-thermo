@@ -55,16 +55,13 @@ class ActionHandler():
         LoggingHandler.log_to_console(command)
 
     def test_rule(t1, t2, t3):
-        is_tripped = False
-        if Rule.rule(t1, t2, t3):
-            is_tripped = True
-            if ActionHandler.previous_event != is_tripped:
+        is_tripped = Rule.rule(t1, t2, t3)
+        if ActionHandler.previous_event != is_tripped:
+            if is_tripped:
                 ActionHandler.send_command("ON")
-        else:
-            is_tripped = False
-            if ActionHandler.previous_event != is_tripped:
+            else:
                 ActionHandler.send_command("OFF")
-        ActionHandler.previous_event = is_tripped
+            ActionHandler.previous_event = is_tripped
 
     def task(queue):
         while True:
