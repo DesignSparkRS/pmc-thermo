@@ -21,7 +21,7 @@ class Listener():
         LoggingHandler.log_to_console("Connected")
 
     def on_message(mqttc, obj, msg):
-        msg_handler_queue.put(msg)
+        msg_queue.put(msg)
         LoggingHandler.log_to_console(CsvDecoder.decode(msg))
 
     def on_subscribe(self, mqttc, obj, mid, granted_qos):
@@ -104,11 +104,11 @@ class CsvDecoder():
 
 if __name__ == '__main__':
     mqttc = mqtt.Client()
-    msg_handler_queue = queue.Queue()
-    action_handler_queue = queue.Queue()
+    msg_queue = queue.Queue()
+    action_queue = queue.Queue()
 
-    message_handler = Thread(target=MessageHandler.dispatch_message, args=(msg_handler_queue, action_handler_queue))
-    action_handler = Thread(target=ActionHandler.task, args=(action_handler_queue, ))
+    message_handler = Thread(target=MessageHandler.dispatch_message, args=(msg_queue, action_queue))
+    action_handler = Thread(target=ActionHandler.task, args=(action_queue, ))
 
     action_handler.start()
     message_handler.start()
