@@ -36,20 +36,17 @@ class Listener():
         mqttc.loop_forever()
 
 
-class MessageHandler(Thread):
+class MessageHandler():
     """Decodes message and dispatches them to handlers"""
-    def dispatch_message(message: str):
-        dev, t1, t2, t3 = CsvDecoder.decode(message)
-        action_handler_queue.put((dev, t1, t2, t3))
-        LoggingHandler.log_to_file(f'{dev}, {t1:.2f}, {t2:.2f}, {t3:.2f}')
-
-    def run(self):
+    def dispatch_message(in_queue, out_queue):
         while True:
-            msg = msg_handler_queue.get()
-            MessageHandler.dispatch_message(msg)
+            message = in_queue.get()
+            dev, t1, t2, t3 = CsvDecoder.decode(message)
+            out_queue.put((dev, t1, t2, t3))
+            LoggingHandler.log_to_file(f'{dev}, {t1:.2f}, {t2:.2f}, {t3:.2f}')
 
 
-class ActionHandler(Thread):
+class ActionHandler():
     """Generates outbound MQTT messages according to rule"""
     previous_event = False
 
@@ -69,9 +66,9 @@ class ActionHandler(Thread):
                 ActionHandler.send_command("OFF")
         ActionHandler.previous_event = is_tripped
 
-    def run(self):
+    def task(queue):
         while True:
-            dev, t1, t2, t3 = action_handler_queue.get()
+            dev, t1, t2, t3 = queue.get()
             if not math.isnan(t1) or math.isnan(t2) or math.isnan(t3):
                 ActionHandler.test_rule(t1, t2, t3)
 
@@ -112,8 +109,9 @@ if __name__ == '__main__':
     mqttc = mqtt.Client()
     msg_handler_queue = queue.Queue()
     action_handler_queue = queue.Queue()
-    message_handler = MessageHandler()
-    action_handler = ActionHandler()
+
+    message_handler = Thread(target=MessageHandler.dispatch_message, args=(msg_handler_queue, action_handler_queue))
+    action_handler = Thread(target=ActionHandler.task, args=(action_handler_queue, ))
 
     action_handler.start()
     message_handler.start()
